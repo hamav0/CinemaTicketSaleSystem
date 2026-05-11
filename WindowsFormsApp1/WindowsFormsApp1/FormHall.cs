@@ -338,17 +338,43 @@ namespace WindowsFormsApp1
         {
             var parts = id.Split('_');
             if (parts.Length < 2) return;
-            int num = int.Parse(parts[1]);
-            string neighborId = $"{parts[0]}_{(num % 2 == 0 ? num + 1 : num - 1)}";
 
-            Control[] found = pnlCanvas.Controls.Find(neighborId, false);
-            if (found.Length > 0 && found[0] is Button neighborBtn)
+            int num = int.Parse(parts[1]);
+            string rowPrefix = parts[0];
+            Point currentPos = _originalLocations[id];
+
+            string neighborId = null;
+
+            // Проверяем соседа слева (num-1) и справа (num+1)
+            string idLeft = $"{rowPrefix}_{num - 1}";
+            string idRight = $"{rowPrefix}_{num + 1}";
+
+            // Порог расстояния: 45 пикселей (между 41 для дивана и 49 для обычных)
+            if (_originalLocations.ContainsKey(idLeft) &&
+                Math.Abs(currentPos.X - _originalLocations[idLeft].X) < Math.Abs(_originalLocations[idRight].X - currentPos.X))
             {
-                if (_selectedSeats.Contains(id) != _selectedSeats.Contains(neighborId))
-                    Seat_Click(neighborBtn, EventArgs.Empty);
+                neighborId = idLeft;
+            }
+            else if (_originalLocations.ContainsKey(idRight) &&
+                     Math.Abs(_originalLocations[idRight].X - currentPos.X) < Math.Abs(currentPos.X - _originalLocations[idLeft].X))
+            {
+                neighborId = idRight;
+            }
+
+            if (neighborId != null)
+            {
+                Control[] found = pnlCanvas.Controls.Find(neighborId, false);
+                if (found.Length > 0 && found[0] is Button neighborBtn)
+                {
+                    // Синхронизируем выбор: если текущее нажато, а сосед — нет (или наоборот)
+                    if (_selectedSeats.Contains(id) != _selectedSeats.Contains(neighborId))
+                    {
+                        Seat_Click(neighborBtn, EventArgs.Empty);
+                    }
+                }
             }
         }
-
+        
         private void ApplyZoom(float delta)
         {
             _scale = Math.Max(0.4f, Math.Min(2.5f, _scale + delta));
